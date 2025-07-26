@@ -154,7 +154,7 @@ static int pcf8591_probe(struct i2c_client *client,
 {
     struct pcf8591_data *data;
     int i, ret;
-
+    u8 init_data[2] = {0x40, 0x00};
     dev_info(&client->dev, "Probing PCF8591 at address 0x%02x\n", client->addr);
 
     // Allocate driver private data
@@ -212,7 +212,7 @@ static int pcf8591_probe(struct i2c_client *client,
     pcf_debug(&client->dev, "Created device node for DAC\n");
 
     // Initialize DAC to 0V (mid-range)
-    u8 init_data[2] = {0x40, 0x00};
+    //u8 init_data[2] = {0x40, 0x00};
     if (i2c_master_send(client, init_data, 2) != 2) {
         dev_warn(&client->dev, "DAC initialization failed\n");
     } else {
@@ -239,7 +239,7 @@ err_class:
 /* Driver remove function
  * Cleanup resources when device is removed
  */
-static void pcf8591_remove(struct i2c_client *client)
+static int pcf8591_remove(struct i2c_client *client)
 {
     struct pcf8591_data *data = i2c_get_clientdata(client);
     int i;
@@ -261,6 +261,7 @@ static void pcf8591_remove(struct i2c_client *client)
     // Destroy class and unregister device numbers
     class_destroy(data->class);
     unregister_chrdev_region(data->devt, ADC_DEVICES + 1);
+    return 0;
 }
 
 /* I2C device ID table */
