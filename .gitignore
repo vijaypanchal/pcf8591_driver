@@ -1,0 +1,57 @@
+# Kernel module build artifacts
+*.ko
+*.o
+*.mod
+*.mod.c
+*.mod.o
+*.order
+*.symvers
+.tmp_versions/
+*.cmd
+Module.symvers
+modules.order
+
+# Generated device tree files
+*.dtbo
+
+# Object files and binaries
+*.bin
+*.elf
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*~
+*.bak
+*.swo
+
+# Dependency files
+.depend
+*.d
+
+# Build directories
+build/
+output/
+
+# Kernel specific files
+Module.markers
+modules.builtin
+modules.builtin.modinfo
+modules.nsdeps
+
+# Log files
+*.log
+dmesg.txt
+
+# Backup files
+*.backup
+*.orig
+
+# Patch files
+*.patch
+*.diff
+
+# Documentation output
+*.pdf
+*.html
