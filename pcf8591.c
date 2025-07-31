@@ -3,6 +3,8 @@
  * Copyright (C) 2001-2004 Aurelien Jarno <aurelien@aurel32.net>
  * Ported to Linux 2.6 by Aurelien Jarno <aurelien@aurel32.net> with
  * the help of Jean Delvare <jdelvare@suse.de>
+ * Ported to Linux 5.10.16  by Vijay Panchal
+ * Modified and maintained by Vijay Panchal <vijayp.work@gmail.com>
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -384,6 +386,12 @@ static int pcf8591_read_channel(struct pcf8591_data *data, int channel)
     }
 }
 // ...existing code...
+// Dummy callback implementations with info print
+static int pcf8591_dummy_detect(struct i2c_client *client, struct i2c_board_info *info) {
+    pr_info("pcf8591_dummy_detect: called for device at 0x%02x\n", client->addr);
+    return 0;
+}
+
 
 static const struct i2c_device_id pcf8591_id[] = {
 	{ "pcf8591", 0 },
@@ -391,12 +399,14 @@ static const struct i2c_device_id pcf8591_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, pcf8591_id);
 
+
 static struct i2c_driver pcf8591_driver = {
 	.driver = {
 		.name	= "pcf8591",
 	},
 	.probe_new	= pcf8591_probe,
-	.remove		= pcf8591_remove,
+    .remove		= pcf8591_remove,
+    .detect     = pcf8591_dummy_detect,
 	.id_table	= pcf8591_id,
 };
 
