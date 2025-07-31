@@ -79,7 +79,8 @@ static int pcf8591_read_channel(struct device *dev, int channel);
 static ssize_t show_in##channel##_input(struct device *dev,		\
 					struct device_attribute *attr,	\
 					char *buf)			\
-{									\
+{							\
+	pr_info("show_input:%d called\n", channel);	\
 	return sprintf(buf, "%d\n", pcf8591_read_channel(dev, channel));\
 }									\
 static DEVICE_ATTR(in##channel##_input, S_IRUGO,			\
