@@ -178,111 +178,135 @@ static const struct attribute_group pcf8591_attr_group_opt = {
 /*
  * Real code
  */
+// ...existing code...
 
 static int pcf8591_probe(struct i2c_client *client)
 {
-	struct pcf8591_data *data;
-	int err;
+    struct pcf8591_data *data;
+    int err;
 
-	data = devm_kzalloc(&client->dev, sizeof(struct pcf8591_data),
-			    GFP_KERNEL);
-	if (!data)
-		return -ENOMEM;
+    pr_info("pcf8591_probe: called for device at 0x%02x\n", client->addr);
 
-	i2c_set_clientdata(client, data);
-	mutex_init(&data->update_lock);
+    data = devm_kzalloc(&client->dev, sizeof(struct pcf8591_data),
+                GFP_KERNEL);
+    if (!data) {
+        pr_err("pcf8591_probe: memory allocation failed\n");
+        return -ENOMEM;
+    }
 
-	/* Initialize the PCF8591 chip */
-	pcf8591_init_client(client);
+    i2c_set_clientdata(client, data);
+    mutex_init(&data->update_lock);
 
-	/* Register sysfs hooks */
-	err = sysfs_create_group(&client->dev.kobj, &pcf8591_attr_group);
-	if (err)
-		return err;
+    pr_info("pcf8591_probe: initializing client\n");
+    pcf8591_init_client(client);
 
-	/* Register input2 if not in "two differential inputs" mode */
-	if (input_mode != 3) {
-		err = device_create_file(&client->dev, &dev_attr_in2_input);
-		if (err)
-			goto exit_sysfs_remove;
-	}
+    pr_info("pcf8591_probe: creating sysfs group\n");
+    err = sysfs_create_group(&client->dev.kobj, &pcf8591_attr_group);
+    if (err) {
+        pr_err("pcf8591_probe: sysfs_create_group failed: %d\n", err);
+        return err;
+    }
 
-	/* Register input3 only in "four single ended inputs" mode */
-	if (input_mode == 0) {
-		err = device_create_file(&client->dev, &dev_attr_in3_input);
-		if (err)
-			goto exit_sysfs_remove;
-	}
+    if (input_mode != 3) {
+        pr_info("pcf8591_probe: creating in2_input sysfs file\n");
+        err = device_create_file(&client->dev, &dev_attr_in2_input);
+        if (err) {
+            pr_err("pcf8591_probe: device_create_file in2_input failed: %d\n", err);
+            goto exit_sysfs_remove;
+        }
+    }
 
-	data->hwmon_dev = hwmon_device_register(&client->dev);
-	if (IS_ERR(data->hwmon_dev)) {
-		err = PTR_ERR(data->hwmon_dev);
-		goto exit_sysfs_remove;
-	}
+    if (input_mode == 0) {
+        pr_info("pcf8591_probe: creating in3_input sysfs file\n");
+        err = device_create_file(&client->dev, &dev_attr_in3_input);
+        if (err) {
+            pr_err("pcf8591_probe: device_create_file in3_input failed: %d\n", err);
+            goto exit_sysfs_remove;
+        }
+    }
 
-	return 0;
+    pr_info("pcf8591_probe: registering hwmon device\n");
+    data->hwmon_dev = hwmon_device_register(&client->dev);
+    if (IS_ERR(data->hwmon_dev)) {
+        err = PTR_ERR(data->hwmon_dev);
+        pr_err("pcf8591_probe: hwmon_device_register failed: %d\n", err);
+        goto exit_sysfs_remove;
+    }
+
+    pr_info("pcf8591_probe: probe successful\n");
+    return 0;
 
 exit_sysfs_remove:
-	sysfs_remove_group(&client->dev.kobj, &pcf8591_attr_group_opt);
-	sysfs_remove_group(&client->dev.kobj, &pcf8591_attr_group);
-	return err;
+    pr_err("pcf8591_probe: error occurred, cleaning up sysfs\n");
+    sysfs_remove_group(&client->dev.kobj, &pcf8591_attr_group_opt);
+    sysfs_remove_group(&client->dev.kobj, &pcf8591_attr_group);
+    return err;
 }
 
 static int pcf8591_remove(struct i2c_client *client)
 {
-	struct pcf8591_data *data = i2c_get_clientdata(client);
+    struct pcf8591_data *data = i2c_get_clientdata(client);
 
-	hwmon_device_unregister(data->hwmon_dev);
-	sysfs_remove_group(&client->dev.kobj, &pcf8591_attr_group_opt);
-	sysfs_remove_group(&client->dev.kobj, &pcf8591_attr_group);
-	return 0;
+    pr_info("pcf8591_remove: called for device at 0x%02x\n", client->addr);
+
+    hwmon_device_unregister(data->hwmon_dev);
+    sysfs_remove_group(&client->dev.kobj, &pcf8591_attr_group_opt);
+    sysfs_remove_group(&client->dev.kobj, &pcf8591_attr_group);
+    return 0;
 }
 
-/* Called when we have found a new PCF8591. */
 static void pcf8591_init_client(struct i2c_client *client)
 {
-	struct pcf8591_data *data = i2c_get_clientdata(client);
-	data->control = PCF8591_INIT_CONTROL;
-	data->aout = PCF8591_INIT_AOUT;
+    struct pcf8591_data *data = i2c_get_clientdata(client);
+    pr_info("pcf8591_init_client: initializing device at 0x%02x\n", client->addr);
 
-	i2c_smbus_write_byte_data(client, data->control, data->aout);
+    data->control = PCF8591_INIT_CONTROL;
+    data->aout = PCF8591_INIT_AOUT;
 
-	/*
-	 * The first byte transmitted contains the conversion code of the
-	 * previous read cycle. FLUSH IT!
-	 */
-	i2c_smbus_read_byte(client);
+    pr_info("pcf8591_init_client: writing control=0x%02x, aout=0x%02x\n", data->control, data->aout);
+    i2c_smbus_write_byte_data(client, data->control, data->aout);
+
+    pr_info("pcf8591_init_client: flushing first read\n");
+    i2c_smbus_read_byte(client);
 }
 
 static int pcf8591_read_channel(struct device *dev, int channel)
 {
-	u8 value;
-	struct i2c_client *client = to_i2c_client(dev);
-	struct pcf8591_data *data = i2c_get_clientdata(client);
+    u8 value;
+    struct i2c_client *client = to_i2c_client(dev);
+    struct pcf8591_data *data = i2c_get_clientdata(client);
 
-	mutex_lock(&data->update_lock);
+    pr_debug("pcf8591_read_channel: reading channel %d\n", channel);
 
-	if ((data->control & PCF8591_CONTROL_AICH_MASK) != channel) {
-		data->control = (data->control & ~PCF8591_CONTROL_AICH_MASK)
-			      | channel;
-		i2c_smbus_write_byte(client, data->control);
+    mutex_lock(&data->update_lock);
 
-		/*
-		 * The first byte transmitted contains the conversion code of
-		 * the previous read cycle. FLUSH IT!
-		 */
-		i2c_smbus_read_byte(client);
-	}
-	value = i2c_smbus_read_byte(client);
+    if ((data->control & PCF8591_CONTROL_AICH_MASK) != channel) {
+        pr_debug("pcf8591_read_channel: switching to channel %d\n", channel);
+        data->control = (data->control & ~PCF8591_CONTROL_AICH_MASK)
+                  | channel;
+        i2c_smbus_write_byte(client, data->control);
 
-	mutex_unlock(&data->update_lock);
+        pr_debug("pcf8591_read_channel: flushing after channel switch\n");
+        i2c_smbus_read_byte(client);
+    }
+    value = i2c_smbus_read_byte(client);
 
-	if ((channel == 2 && input_mode == 2) ||
-	    (channel != 3 && (input_mode == 1 || input_mode == 3)))
-		return 10 * REG_TO_SIGNED(value);
-	else
-		return 10 * value;
+    mutex_unlock(&data->update_lock);
+
+    pr_debug("pcf8591_read_channel: raw value = %u\n", value);
+
+    if ((channel == 2 && input_mode == 2) ||
+        (channel != 3 && (input_mode == 1 || input_mode == 3))) {
+        int signed_val = 10 * REG_TO_SIGNED(value);
+        pr_debug("pcf8591_read_channel: signed value = %d\n", signed_val);
+        return signed_val;
+    } else {
+        int unsigned_val = 10 * value;
+        pr_debug("pcf8591_read_channel: unsigned value = %d\n", unsigned_val);
+        return unsigned_val;
+    }
 }
+// ...existing code...
 
 static const struct i2c_device_id pcf8591_id[] = {
 	{ "pcf8591", 0 },
@@ -301,26 +325,22 @@ static struct i2c_driver pcf8591_driver = {
 
 static int __init pcf8591_init(void)
 {
-	int r;
 	if (input_mode < 0 || input_mode > 3) {
 		pr_warn("invalid input_mode (%d)\n", input_mode);
 		input_mode = 0;
 	}
-	r = i2c_add_driver(&pcf8591_driver);
-	pr_info("added %d", r);
-	return r;
+	return i2c_add_driver(&pcf8591_driver);
 }
 
 static void __exit pcf8591_exit(void)
 {
-	pr_info("removed");
 	i2c_del_driver(&pcf8591_driver);
 }
 
-MODULE_AUTHOR("Aurelien Jarno <aurelien@aurel32.net>");
+
+MODULE_AUTHOR("Vijay <vijayp.work@gmail.com>");
 MODULE_DESCRIPTION("PCF8591 driver");
 MODULE_LICENSE("GPL");
 
 module_init(pcf8591_init);
 module_exit(pcf8591_exit);
-
