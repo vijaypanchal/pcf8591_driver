@@ -325,18 +325,19 @@ static struct i2c_driver pcf8591_driver = {
 
 static int __init pcf8591_init(void)
 {
-	if (input_mode < 0 || input_mode > 3) {
-		pr_warn("invalid input_mode (%d)\n", input_mode);
-		input_mode = 0;
-	}
-	return i2c_add_driver(&pcf8591_driver);
+    pr_info("pcf8591_init: called, input_mode=%d\n", input_mode);
+    if (input_mode < 0 || input_mode > 3) {
+        pr_warn("invalid input_mode (%d)\n", input_mode);
+        input_mode = 0;
+    }
+    return i2c_add_driver(&pcf8591_driver);
 }
 
 static void __exit pcf8591_exit(void)
 {
-	i2c_del_driver(&pcf8591_driver);
+    pr_info("pcf8591_exit: called\n");
+    i2c_del_driver(&pcf8591_driver);
 }
-
 
 MODULE_AUTHOR("Vijay <vijayp.work@gmail.com>");
 MODULE_DESCRIPTION("PCF8591 driver");
